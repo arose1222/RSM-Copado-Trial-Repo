@@ -1,48 +1,93 @@
 @IsTest
 private class AccountAutomationsTest {
 
-    @isTest static void testDefaultDescription(){
-        Account acc = new Account(Name = 'My Test Account');
-        insert acc;
-        acc = AccountAutomations.setDefaultDescription(acc);
-        System.assertEquals('Default description', acc.Description, 'When description is null, it is updated to Default description');
+    // ── setDefaultDescription ──────────────────────────────────────────────
 
-        acc.Description = 'New Description Manual';
-        
-        acc = AccountAutomations.setDefaultDescription(acc);
-        System.assertNotEquals('Default description', acc.Description, 'When description is NOT null, it is NOT updated to Default description');
+    @IsTest
+    static void setDefaultDescription_nullDescription_setsDefault() {
+        Account a = new Account(Name = 'Test Account', Description = null);
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultDescription(a);
+        Test.stopTest();
+
+        Assert.areEqual('Default description', result.Description,
+            'Description should be set to the default value when null.');
     }
 
-    @isTest static void testDefaultBillingAddress(){
-        Account acc = new Account(Name = 'My Test Account');
-        insert acc;
-        acc = AccountAutomations.setDefaultBillingAddress(acc);
-        System.assertEquals('Basauri, 6', acc.BillingStreet, 'Default BillingStreet is Basauri, 6');
-        System.assertEquals('Madrid', acc.BillingState, 'Default BillingState is Madrid');
-        System.assertEquals('28023', acc.BillingPostalCode, 'Default BillingPostalCode is 28023');
+    @IsTest
+    static void setDefaultDescription_existingDescription_keepsOriginal() {
+        Account a = new Account(Name = 'Test Account', Description = 'My custom description');
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultDescription(a);
+        Test.stopTest();
+
+        Assert.areEqual('My custom description', result.Description,
+            'Description should remain unchanged when already populated.');
     }
 
-    @isTest static void testDefaultShippingAddress(){
-        Account acc = new Account(Name = 'My Test Account');
-        insert acc;
-        acc = AccountAutomations.setDefaultShippingAddress(acc);
-        System.assertEquals('Basauri, 6', acc.ShippingStreet, 'Default ShippingStreet is Basauri, 6');
-        System.assertEquals('Madrid', acc.ShippingState, 'Default Shippingtate is Madrid');
-        System.assertEquals('28023', acc.ShippingPostalCode, 'Default ShippingPostalCode is 28023');
+    // ── setDefaultBillingAddress ───────────────────────────────────────────
+
+    @IsTest
+    static void setDefaultBillingAddress_always_setsAddress() {
+        Account a = new Account(Name = 'Test Account');
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultBillingAddress(a);
+        Test.stopTest();
+
+        Assert.areEqual('Basauri, 6', result.BillingStreet,
+            'BillingStreet should be set to the default value.');
+        Assert.areEqual('Madrid', result.BillingState,
+            'BillingState should be set to the default value.');
+        Assert.areEqual('28023', result.BillingPostalCode,
+            'BillingPostalCode should be set to the default value.');
     }
 
-    @isTest static void testDefaultPhone(){
-        Account acc = new Account(Name = 'My Test Account');
-        insert acc;
-        acc = AccountAutomations.setDefaultPhone(acc);
-        System.assertEquals('688456789', acc.Phone, 'Default phone number is 688456789');
+    // ── setDefaultShippingAddress ──────────────────────────────────────────
+
+    @IsTest
+    static void setDefaultShippingAddress_always_setsAddress() {
+        Account a = new Account(Name = 'Test Account');
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultShippingAddress(a);
+        Test.stopTest();
+
+        Assert.areEqual('Basauri, 6', result.ShippingStreet,
+            'ShippingStreet should be set to the default value.');
+        Assert.areEqual('Madrid', result.ShippingState,
+            'ShippingState should be set to the default value.');
+        Assert.areEqual('28023', result.ShippingPostalCode,
+            'ShippingPostalCode should be set to the default value.');
     }
 
-    @isTest static void testDefaultURL(){
-        Account acc = new Account(Name = 'My Test Account');
-        insert acc;
-        acc = AccountAutomations.setDefaultURL(acc);
-        System.assertEquals('www.copa.do', acc.Website, 'Default website is www.copa.do');
+    // ── setDefaultPhone ────────────────────────────────────────────────────
+
+    @IsTest
+    static void setDefaultPhone_always_setsPhone() {
+        Account a = new Account(Name = 'Test Account');
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultPhone(a);
+        Test.stopTest();
+
+        Assert.areEqual('688456789', result.Phone,
+            'Phone should be set to the default value.');
     }
 
+    // ── setDefaultURL ──────────────────────────────────────────────────────
+
+    @IsTest
+    static void setDefaultURL_always_setsWebsite() {
+        Account a = new Account(Name = 'Test Account');
+
+        Test.startTest();
+        Account result = AccountAutomations.setDefaultURL(a);
+        Test.stopTest();
+
+        Assert.areEqual('www.copa.do', result.Website,
+            'Website should be set to the default value.');
+    }
 }
