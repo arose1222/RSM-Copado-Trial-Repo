@@ -1,30 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Profile xmlns="http://soap.sforce.com/2006/04/metadata"
-      xmlns:n1="http://www.w3.org/2001/XMLSchema-instance">
-    <custom>false</custom>
-    <description n1:nil="true" />
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Bicycle__c.Type__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <flowAccesses>
+<Profile xmlns="http://soap.sforce.com/2006/04/metadata">
+    <classAccesses>
+        <apexClass>ASC_InfestationReportCtrl</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AccountAutomations</apexClass>
         <enabled>false</enabled>
-        <flow>Update_Bicycle_Type</flow>
-    </flowAccesses>
-    <layoutAssignments>
-        <layout>Bicycle__c-Bicycle Layout</layout>
-    </layoutAssignments>
-    <loginHours n1:nil="true" />
-    <objectPermissions>
-        <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
-        <allowRead>true</allowRead>
-        <modifyAllRecords>true</modifyAllRecords>
-        <object>Bicycle__c</object>
-        <viewAllRecords>true</viewAllRecords>
-    </objectPermissions>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>AccountAutomationsTest</apexClass>
+        <enabled>false</enabled>
+    </classAccesses>
+    <custom>false</custom>
     <userLicense>Salesforce</userLicense>
     <userPermissions>
         <enabled>true</enabled>
