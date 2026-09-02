@@ -69,7 +69,7 @@ private class AccountAutomationsTest {
         Account result = AccountAutomations.setDefaultPhone(a);
         Test.stopTest();
 
-        Assert.areEqual('9999999', result.Phone,
+        Assert.areEqual('3174162141', result.Phone,
             'Phone should be set to the default value.');
     }
 
