@@ -27,22 +27,18 @@ private class AccountAutomationsTest {
             'Description should remain unchanged when already populated.');
     }
 
-    // ── setDefaultBillingAddress ───────────────────────────────────────────
+    // ── setDefaultSite ─────────────────────────────────────────────────────
 
     @IsTest
-    static void setDefaultBillingAddress_always_setsAddress() {
+    static void setDefaultSite_always_setsSingleLocation() {
         Account a = new Account(Name = 'Test Account');
 
         Test.startTest();
-        Account result = AccountAutomations.setDefaultBillingAddress(a);
+        Account result = AccountAutomations.setDefaultSite(a);
         Test.stopTest();
 
-        Assert.areEqual('Basauri, 6', result.BillingStreet,
-            'BillingStreet should be set to the default value.');
-        Assert.areEqual('Madrid', result.BillingState,
-            'BillingState should be set to the default value.');
-        Assert.areEqual('28023', result.BillingPostalCode,
-            'BillingPostalCode should be set to the default value.');
+        Assert.areEqual('Single location', result.Site,
+            'Site should always be set to Single location.');
     }
 
     // ── setDefaultShippingAddress ──────────────────────────────────────────
@@ -55,11 +51,11 @@ private class AccountAutomationsTest {
         Account result = AccountAutomations.setDefaultShippingAddress(a);
         Test.stopTest();
 
-        Assert.areEqual('Basauri, 6', result.ShippingStreet,
+        Assert.areEqual('111 W Illinois St', result.ShippingStreet,
             'ShippingStreet should be set to the default value.');
-        Assert.areEqual('Madrid', result.ShippingState,
+        Assert.areEqual('Chicago', result.ShippingState,
             'ShippingState should be set to the default value.');
-        Assert.areEqual('28023', result.ShippingPostalCode,
+        Assert.areEqual('60654', result.ShippingPostalCode,
             'ShippingPostalCode should be set to the default value.');
     }
 
@@ -73,7 +69,7 @@ private class AccountAutomationsTest {
         Account result = AccountAutomations.setDefaultPhone(a);
         Test.stopTest();
 
-        Assert.areEqual('688456789', result.Phone,
+        Assert.areEqual('9999999', result.Phone,
             'Phone should be set to the default value.');
     }
 
@@ -87,7 +83,7 @@ private class AccountAutomationsTest {
         Account result = AccountAutomations.setDefaultURL(a);
         Test.stopTest();
 
-        Assert.areEqual('www.copa.do', result.Website,
+        Assert.areEqual('www.copado.com', result.Website,
             'Website should be set to the default value.');
     }
 }
