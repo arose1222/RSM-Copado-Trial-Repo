@@ -1,0 +1,903 @@
+<apex:page id="casePage" standardController="Case" sidebar="true" extensions="CaseController" action="{!routeToStandardPage}">
+    <style>
+        .printpreview { vertical-align: center; text-align: right;}
+        .bPageBlock .detailList tr td.dataCol,
+        .bPageBlock .detailList tr td.labelCol
+        {
+        border:0px;
+        }
+        .bPageBlock .detailList tr th {
+        border-bottom: 0px;
+        }
+        .textClass {
+        width: 80%;
+        }
+        .messageClass {
+        color: red;
+        }
+        .centerCol {
+        text-align: center;
+        }
+        .fakePrintViewClass {
+        color: #015ba7;
+        text-decoration: none;
+        /*text-align: right;*/
+        font-size: 91%;
+        }
+        <!--Changes by Anusha to accomodate Old Raw SN# and New Raw SN# changes -EUTSV-3875- Start-->
+        .whiteHeader th {
+        background-color: white !important;
+        }
+        
+        .whiteHeader .headerRow th {
+            border: none !important;
+        }
+        
+        .whiteHeader td {
+            border: none !important;
+        }
+        
+        .whiteHeader {
+            border: none !important;
+        }
+        <!--Changes by Anusha to accomodate Old Raw SN# and New Raw SN# changes -EUTSV-3875 - End-->
+        }
+    </style>
+    <script type="text/javascript">
+    var productJsonData = {! jsonString};
+    
+    function populatePicklists(familyValue, modelValue)
+    {
+        console.log('populate picklists called');
+        var families = Object.keys(productJsonData);
+        families.sort();
+        var familyPicklist = document.querySelector('.product-family-picklist');//EUTSV-3344,SAVE Disable and family picklist issue
+        while (familyPicklist.firstChild)
+        {
+            familyPicklist.removeChild(familyPicklist.firstChild);
+        }
+        for(var i = 0; i < families.length; i++)
+        {
+            var opt = document.createElement('option');
+            if(familyValue === undefined && i == 0)
+            {
+                opt.selected = true;
+            }
+            else if(familyValue !== undefined && families[i] === familyValue)
+            {
+                opt.selected = true;
+            }
+            opt.value = families[i];
+            opt.innerHTML = families[i];
+            familyPicklist.appendChild(opt);
+        }
+        // $('#familyJSPicklistId').css('display', 'inline');
+        updateModelPicklist(modelValue);
+    }
+    function updateModelPicklist(modelValue)
+    {
+        if(modelValue == 'WIPE_PRODUCT_ID')
+        {
+            wipeProduct();
+        }
+        var modelPicklist = document.querySelector('.product-model-picklist');//EUTSV-3344,SAVE Disable and family picklist issue
+        var familyPicklist = document.querySelector('.product-family-picklist');//EUTSV-3344,SAVE Disable and family picklist issue
+        var models = productJsonData[familyPicklist.options[familyPicklist.selectedIndex].value];
+        while (modelPicklist.firstChild)
+        {
+            modelPicklist.removeChild(modelPicklist.firstChild);
+        }
+        //EUTSV-3344,SAVE Disable and family picklist issue
+        if(models.length === 0){
+            var opt = document.createElement('option');
+            opt.selected = true;
+            opt.value = '';
+            opt.innerHTML = '';
+            modelPicklist.appendChild(opt);
+        }//EUTSV-3344,SAVE Disable and family picklist issue
+        for(var i = 0; i < models.length; i++)
+        {
+            var opt = document.createElement('option');
+            if(modelValue === undefined && i == 0)
+            {
+                opt.selected = true;
+            }
+            else if(modelValue !== undefined && models[i] === modelValue)
+            {
+                opt.selected = true;
+            }
+            opt.value = models[i];
+            opt.innerHTML = models[i];
+            modelPicklist.appendChild(opt);
+        }
+    }
+    var previousOnload = window.onload; window.onload = function() { if (previousOnload) { previousOnload(); } populatePicklists(undefined, undefined); }
+    
+    // Handle to lookup window object
+    var winObjRef;
+    // Lookup window features definition
+    var strWinFeatures = "width=900,height=600,dependent=1,dialog=1,scrollbars=1,modal=1,alwaysRaised=1,location=0";
+    var __top = (screen.height - 600)/2; // get the size
+    var __left = (screen.width - 900)/2;
+    strWinFeatures = strWinFeatures + "," + "top=" + __top + "," + "left=" + __left;
+    
+    // Function to call when lookup page is needed
+    function openLookupCustom(srcComponent)
+    {
+        var URL = rebuildURL(srcComponent);
+        console.log('srcComponent :'  +srcComponent);
+        console.log('URL :'  +URL);
+        
+        if (winObjRef == null || winObjRef.closed) {
+            winObjRef = window.open(URL, '', strWinFeatures);
+        }
+        console.log('winObjRef :' +winObjRef);
+        winObjRef.focus();
+    }
+    function openProductLookup()
+    {
+        console.log('open pop up ');
+        if(winObjRef !== undefined)
+        {
+            winObjRef.close();
+            winObjRef = undefined;
+        }
+        var familyPicklist = document.querySelector('.product-family-picklist');//EUTSV-3344,SAVE Disable and family picklist issue
+        console.log('familyPicklist '+familyPicklist);
+        var familyValue = familyPicklist.options[familyPicklist.selectedIndex].value;
+        console.log('familyValue '+familyValue);
+        if(familyValue === '--None--')
+        {
+            familyValue = '';
+        }
+        var modelPicklist = document.querySelector('.product-model-picklist');//EUTSV-3344,SAVE Disable and family picklist issue
+        console.log('modelPicklist'+modelPicklist);
+        var modelValue = modelPicklist.options[modelPicklist.selectedIndex].value;
+        console.log('modelValue'+modelValue);
+        if(modelValue == '--Select a family--')
+        {
+            modelValue = '';
+        }
+        var popupUrl = '{!URLFOR($Page.CaseProductLookup)}?lookupType={! productLookupType}&productFamily=' + familyValue +'&productModel=' + modelValue;
+        winObjRef = window.open(popupUrl, '', strWinFeatures, true);
+        winObjRef.focus();
+    }
+    
+    
+    // Function to call when spareParts lookup page is needed : added on 04-01-2022 by Adi
+    function openSparePartLookup()
+    {
+        var popupUrl = '{!URLFOR($Page.CaseProductLookup)}?lookupType={! sparePartLookupType}';
+        winObjRef = window.open(popupUrl, '', strWinFeatures, true);
+        winObjRef.focus();
+    }
+    function problemCodeSelectedJS(srcComponent)
+    {
+        var obj = document.getElementById(srcComponent);
+        problemCodeSelected(obj.options[obj.selectedIndex].value);
+    }
+    function rebuildURL (srcComponent)
+    {
+        var obj = document.getElementById(srcComponent);
+        console.log('obj before :' +obj); 
+        return obj;
+    }
+    function updateProductFromProductCodeJS(srcComponent)
+    {
+        console.log('update product code from product js');
+        var obj = document.getElementById(srcComponent);
+        updateProductFromProductCode(obj.value);
+    }
+    function returnProductCodeFromLookup(lookupType, productId, productCode, family, model)
+    {
+        // Dispatch to correct apex controller methods
+        console.log('lookupType : '+lookupType);
+        console.log('productId : '+productId);
+        winObjRef.close();
+        if(lookupType == '{! sparePartLookupType}')
+        {
+            console.log('lookupType : '+lookupType);
+            console.log('productId : '+productId);
+            updateSpareParts(productId);
+            
+        }
+        else if(lookupType =='{! productLookupType}')
+        {
+            console.log('lookupType : '+lookupType);
+            console.log('productId : '+productId);
+            updateProduct(productId, productCode);
+            populatePicklists(family, model);
+        }
+    }
+    function updateProductFromProductCodeCallback(selectedFamily, selectedModel)
+    {
+        populatePicklists(selectedFamily, selectedModel);
+    }
+    function fetchQuestionAndResponse() {
+        //EUTSV-3344,SAVE Disable and family picklist issue(uncommented by swathi)
+        var saveButton = document.querySelector("input[id$='saveBtn']");
+            if (saveButton) {
+                console.log("Save Button Element123:", saveButton);
+                saveButton.disabled = true;
+                saveButton.style.opacity = 0.5; // optional: visually dim
+                saveButton.style.pointerEvents = 'none'; // ensures it's not clickable
+            }//EUTSV-3344,SAVE Disable and family picklist issue
+        
+        var questionResponseMap = {};
+        
+        var questionIds = document.querySelectorAll('.questionId');
+        var responseIds = document.querySelectorAll('.responseId');
+        var responses = document.querySelectorAll('.responseInput');
+        
+        for (var i = 0; i < questionIds.length; i++) {
+            var questionId = questionIds[i].value;
+            var responseId = responseIds[i].value || null;
+            var responseText = responses[i].value;
+            questionResponseMap[questionId] = {
+                responseId: responseId,
+                responseValue: responseText
+            };
+        }
+        console.log('Collected Data:', JSON.stringify(questionResponseMap));
+        
+        sendToApex(JSON.stringify(questionResponseMap));
+    }
+    </script>
+    <apex:sectionHeader subtitle="New {!$ObjectType.Case.Label}" title="{!$ObjectType.Case.Label} {!$Label.Edit}" rendered="{! createMode}"/>
+    <apex:sectionHeader subtitle="{! Case.CaseNumber}" title="{!$ObjectType.Case.Label}" rendered="{!not createMode}"/>
+    
+    <!-- Below "OutputPanel(printPanelIdClassic)" visible only in Classic version : added on 04-01-2022 by Adi -->
+    <apex:outputPanel id="printPanelIdClassic" rendered="{!not createMode && NOT(IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False))}">
+        <apex:outputLink target="_blank" styleClass="fakePrintViewClass" value="{! URLFOR($Page.CaseReport)}?id={!Case.Id}&developerName={!$UserRole.DeveloperName}&reportType=QUOTE">Print Quote</apex:outputLink>
+        <apex:outputText >&nbsp;|&nbsp;</apex:outputText>
+        <apex:outputLink target="_blank" styleClass="fakePrintViewClass" value="{! URLFOR($Page.CaseReport)}?id={!Case.Id}&developerName={!$UserRole.DeveloperName}&reportType=REPAIR">Print Summary</apex:outputLink>
+        <br/>
+        <br/>
+    </apex:outputPanel>
+    
+    <!-- Below "OutputPanel(printPanelIdLtng)" visible only in Lightning version : added on 04-01-2022 by Adi -->
+    <apex:outputPanel id="printPanelIdLtng" rendered="{!not createMode && IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False)}">
+        <apex:outputLink target="_blank" styleClass="fakePrintViewClass" value="{!URLFOR($Page.CaseReport, null, [Id=Case.Id])}&developerName={!$UserRole.DeveloperName}&reportType=QUOTE">Print Quote</apex:outputLink>        
+        <apex:outputText >&nbsp;|&nbsp;</apex:outputText>
+        <apex:outputLink target="_blank" styleClass="fakePrintViewClass" value="{!URLFOR($Page.CaseReport, null, [Id=Case.Id])}&developerName={!$UserRole.DeveloperName}&reportType=REPAIR">Print Summary</apex:outputLink>
+        <br/>
+        <br/>
+    </apex:outputPanel>
+    
+    <!-- START OF THE FORM -->
+    <apex:form id="srForm" rendered="{! $ObjectType.Case.accessible}" >
+        <!-- ACTION FUNCTION DEFINITIONS; INVOKED FROM WITHIN THE JAVASCRIPT ABOVE -->
+        <apex:actionFunction name="updateProduct" action="{! updatePicklistsFromProductId}" reRender="serializedFieldcMode,softVersionField,pnlResMedProduct,productInput,productNameField,problemCodePicklist,pbHeaderInfo,pnlProductCategoryList,pnlProductModel,pnlSerialized,serialNumberField,lotNumberField,productSearchlinkId,patientSection" status="productNameStatus" focus="productInput" immediate="true">
+            <apex:param name="selectedProductId" value=""/>
+            <apex:param name="selectedProductCode" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction name="setStatus" action="{! setStatus}" reRender="" immediate="true"/>
+        <apex:actionFunction name="updateProductFromProductCode" action="{! updatePicklistsFromProductCode}" reRender="serializedFieldcMode,softVersionField,pnlResMedProduct,productInput,productNameField,problemCodePicklist,pbHeaderInfo,pnlProductCategoryList,pnlProductModel,pnlSerialized,serialNumberField,lotNumberField,productSearchlinkId,patientSection" status="productNameStatus" focus="productInput" immediate="true" oncomplete="updateProductFromProductCodeCallback('{! selectedFamily}','{! selectedModel}');">
+            <apex:param name="selectedProductCode" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction name="wipeProduct" action="{! flushProduct}" reRender="serializedFieldcMode,softVersionField,pnlResMedProduct,productInput,productNameField,problemCodePicklist,pbHeaderInfo,pnlProductCategoryList,pnlProductModel,pnlSerialized,serialNumberField,lotNumberField,productSearchlinkId" immediate="true"/>
+        <apex:actionFunction name="updateSpareParts" action="{! updateSparePartsList}" rerender="pbSpareParts,pbProduct" immediate="true">
+            <apex:param name="selectedProductId" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction name="removeSparePart" action="{! removeSparePart}" rerender="pbSpareParts,pbProduct" immediate="true">
+            <apex:param name="selectedProductId" value=""/>
+        </apex:actionFunction>
+        <apex:actionFunction name="questionsLookedAt" action="{! questionsLookedAt}" reRender="productSearchlinkId" immediate="true"/>
+        <apex:actionFunction name="problemCodeSelected" action="{! problemCodeSelected}" reRender="adverseEventOccurredPicklist,pbQuestions" immediate="true">
+            <apex:param name="selectedProblemCode" value=""/>
+        </apex:actionFunction>
+        
+        <apex:pageBlock >
+            <center>
+                <apex:pageBlockButtons location="top">
+                    <apex:commandButton status="saveStatus" action="{! editSR}" value="{!$Label.Edit}" rendered="{! (not editMode) && (not createMode)}" reRender="srForm, pbHeaderInfo" disabled="{! Case.Status == 'Cancelled by Customer' || Case.Status == 'Cancelled - Raised in Error' || Case.Status == 'Closed'}" oncomplete="updateProductFromProductCodeCallback('{! selectedFamily}','{! selectedModel}');"/>
+                    <apex:actionFunction name="sendToApex" action="{!saveSR}" rerender="srForm, pbHeaderInfo, capeQA">
+                        <apex:param name="questionResponseData" value="" assignTo="{!questionResponseJSON}"/>
+                    </apex:actionFunction>
+                    <!--EUTSV-3344, SAVE Disable and family picklist issue, added Id into the Save button
+EUTSV-3752, Incorrect Escalate to QA - Mislabel-->
+                    <apex:commandButton id="saveBtn" status="saveStatus" onclick="var btn = document.getElementById('{!$Component.saveBtn}'); if(btn){btn.disabled = true; btn.style.opacity = 0.5; btn.style.pointerEvents = 'none';} setTimeout(function() {fetchQuestionAndResponse();}, 2000); return false;" value="{!$Label.Save}" rendered="{! editMode || createMode}" oncomplete="updateProductFromProductCodeCallback('{! selectedFamily}','{! selectedModel}');"/>  
+                    <apex:commandButton action="{! cancelUpdate}" status="saveStatus" value="Cancel" rendered="{! editMode || createMode}" immediate="true">
+                        <apex:param name="editMode" value="false" />
+                        <apex:param name="createMode" value="false" />
+                    </apex:commandButton>
+                    <br/>
+                    <apex:actionStatus id="saveStatus">
+                        <apex:facet name="start">
+                            <apex:image url="{! URLFOR($Resource.progbar200x22)}" alt=" working..." height="13px" width="100px"/>
+                        </apex:facet>
+                    </apex:actionStatus>
+                </apex:pageBlockButtons>
+            </center>
+            <apex:messages styleClass="messageClass" />
+            <apex:pageBlockSection id="pbServiceRequestNotAccessible" title="Details" rendered="{! not $ObjectType.Case.accessible}">
+                <p><apex:outputText value="{!$Label.NoAccessToCaseLabel}"/></p>
+            </apex:pageBlockSection>
+            <apex:pageBlockSection id="pbHeaderInfo" title="Header Info" rendered="{! id!=null && $ObjectType.Case.accessible}">
+                <apex:pageBlockSectionItem />
+                <apex:pageBlockSectionItem />
+                <apex:outputField value="{! Case.Account.Name}"/>
+                <apex:outputField value="{! Case.Status}"/>
+                <apex:outputField value="{! selectedProduct.Name}"/>
+                <apex:outputField value="{! Case.Priority}"/>
+                <apex:outputField value="{! Case.Serial_Number__c}"/>
+                <apex:outputField value="{! Case.Lot_Number__c}"/>
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel for="caseOwnerId" value="Case Owner"/>
+                    <apex:outputPanel >
+                        <apex:outputField id="caseOwnerId" value="{! Case.OwnerId}"/>
+                        <apex:outputText value="  "/>
+                        <apex:outputLink rendered="{! not (Case.Status == 'Cancelled by Customer' || Case.Status == 'Cancelled - Raised in Error' || Case.Status == 'Closed')}"  value="{! changeOwnerUrl}">[Change]</apex:outputLink>
+                    </apex:outputPanel>
+                </apex:pageBlockSectionItem>
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel for="serviceCentreName" value="{!$ObjectType.Case.fields.Service_Centre__c.Label}"/>
+                    <apex:outputField id="serviceCentreName" value="{! Case.Service_Centre__r.Name}"/>
+                </apex:pageBlockSectionItem>
+                <!--Replace the Field API Name from PR_Number to Complaint_Ref_ID__c  EUTSV-3353-->
+                <apex:outputField value="{! Case.Complaint_Ref_ID__c}"/>
+                <apex:outputField value="{! Case.Problem_Summary__c}"/>
+                <apex:pageBlockSectionItem />
+                <apex:outputField value="{! Case.Repaired_By__c}"/>
+                
+                <apex:pageBlockSectionItem />
+                <apex:pageBlockSectionItem />
+                <apex:pageBlockSectionItem />
+                <apex:pageBlockSectionItem />
+            </apex:pageBlockSection>
+            <!-- TAB PANEL SECTION -->
+            <apex:tabPanel id="tpServiceRequest"
+                           switchType="client"
+                           selectedTab="Account"
+                           headerSpacing="1"
+                           contentClass="contentClass"
+                           tabClass="activeTab"
+                           inactiveTabClass="inactiveTab">
+                
+                <apex:tab id="tabAccount" label="Account" name="Account">
+                    <apex:pageBlock title="Account Information" id="pbAccount">
+                        <apex:pageBlockSection rendered="{! not editMode && not createMode}">
+                            <apex:outputField value="{! Case.AccountId}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Device_Contact__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                        </apex:pageBlockSection>
+                        <apex:pageBlockSection rendered="{! editMode || createMode}">
+                            <apex:inputField value="{! Case.AccountId}" required="true"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:inputField value="{! Case.Device_Contact__c}" required="true"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:inputField value="{! Case.Contact_Notes__c}" styleClass="textClass" required="false"/>
+                        </apex:pageBlockSection>
+                    </apex:pageBlock>
+                </apex:tab>
+                
+        		<apex:tab id="tabProduct" label="Product" name="Product">
+                <apex:pageBlock title="{!$Label.ProductInformationHeader}" id="pbProduct">
+            
+                    <!-- ================= VIEW MODE ================= -->
+                    <apex:pageBlockSection rendered="{! NOT(editMode) && NOT(createMode)}" columns="2">
+            
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Product Family"/>
+                            <apex:outputField value="{!selectedProduct.Family}"/>
+                        </apex:pageBlockSectionItem>
+                        
+                         <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Product Type"/>
+                            <apex:outputField value="{!selectedProduct.Product_Type__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+            
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Model"/>
+                            <apex:outputField value="{!selectedProduct.Model__c}"/>
+                        </apex:pageBlockSectionItem>
+                        
+                         <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Breach Of Warranty"/>
+                            <apex:outputField value="{!Case.GTS_Breach_of_Warranty__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Product Name"/>
+                            <apex:outputField value="{!selectedProduct.Name}"/>
+                        </apex:pageBlockSectionItem>
+                                                                      
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Serial Number"/>
+                            <apex:outputField value="{!Case.Serial_Number__c}"/>
+                        </apex:pageBlockSectionItem>            
+                        
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="{!$ObjectType.Product2.fields.ProductCode.Label}" />                            
+                            <apex:outputText value="{! selectedProduct.ProductCode}" />
+                        </apex:pageBlockSectionItem>                                
+                                                                       
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Lot Number"/>
+                            <apex:outputField value="{!Case.Lot_Number__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Warranty Status"/>
+                            <apex:outputField value="{!Case.GTS_Warranty_Status__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Software Version"/>
+                            <apex:outputField value="{!Case.Software_Version__r.Name}"/>
+                        </apex:pageBlockSectionItem>
+            		<!--Added as part of CPS -2514 by Annapurna -->
+                        <apex:pageBlockSectionItem rendered="{!CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;')}">
+                            <apex:outputLabel value="Patient Tier Type"/>
+                            <apex:outputField value="{!Case.Patient_Tier_Type__c}"/>
+                        </apex:pageBlockSectionItem>
+                        
+                        <apex:pageBlockSectionItem rendered="{!CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;')}">
+                            <apex:outputLabel value="Inspection Only"/>
+                            <apex:outputField value="{!Case.Inspection_Only__c}"/>
+                        </apex:pageBlockSectionItem>
+                        
+                        <apex:pageBlockSectionItem rendered="{!CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;')}">
+                            <apex:outputLabel value="Leak Test"/>
+                            <apex:outputField value="{!Case.Leak_Test__c}"/>
+                        </apex:pageBlockSectionItem>
+                       
+                        <apex:pageBlockSectionItem rendered="{!CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;')}">
+                            <apex:outputLabel value="Main PCB Replaced?"/>
+                            <apex:outputText value="{!MainPCBReplacedValue}"/>
+                        </apex:pageBlockSectionItem>
+            
+                    </apex:pageBlockSection>
+            
+            
+                    <!-- ================= EDIT MODE ================= -->
+                    <apex:pageBlockSection id="productPicklists" 
+                                            rendered="{! editMode || createMode}" 
+                                            columns="2">
+            
+                        <!-- Product Family -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="{!$ObjectType.Product2.fields.Family.Label}" for="familyJSPicklistId"/>
+                                <!-- EUTSV-3344,SAVE Disable and family picklist issue -->
+                                <apex:selectList value="{!selectFamily}"
+                                                 size="1"
+                                                 onchange="updateModelPicklist('WIPE_PRODUCT_ID');"
+                                                 styleClass="product-family-picklist">
+                                    <apex:selectOptions value="{!prodFamilyOptions}" />
+                                </apex:selectList>
+                        </apex:pageBlockSectionItem>
+                        
+                         <!-- Serial Number -->
+                        <apex:pageBlockSectionItem >
+                                <apex:outputLabel for="serialNumberField" value="{!$ObjectType.Case.fields.Serial_Number__c.Label}"/>
+                                <apex:outputPanel id="serialNumberField">
+                                    <apex:outputPanel layout="block" styleClass="requiredInput">
+                                        <apex:outputPanel layout="block" styleClass="requiredBlock" rendered="{! selectedProduct.Product_Type__c == 'Serial'}"/>
+                                        <apex:inputField value="{! Case.Serial_Number__c}"/>
+                                    </apex:outputPanel>
+                                </apex:outputPanel>
+                         </apex:pageBlockSectionItem>
+            
+                        <!-- Model -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="{!$ObjectType.Product2.fields.Model__c.Label}" for="modelJSPicklistId"/>
+                                <!-- EUTSV-3344,SAVE Disable and family picklist issue -->
+                                <apex:selectList value="{!selectModel}"
+                                                 size="1"
+                                                 onchange="wipeProduct();"
+                                                 styleClass="product-model-picklist">
+                                    <apex:selectOptions value="{!prodModelOptions}" />
+                                </apex:selectList>
+                        </apex:pageBlockSectionItem>
+                        
+                         <!-- Software Version -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Software Version" for="softVersionField"/>
+                                <apex:selectList id="softVersionField" title="Software Version" value="{! Case.Software_Version__c}" size="1"
+                                                 disabled="{! not productIsSoftware}">
+                                    <apex:selectOptions value="{! softwareVersionOptions}" />
+                                </apex:selectList>
+                        </apex:pageBlockSectionItem>
+            
+            
+                        <!-- Product Code -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="{!$ObjectType.Product2.fields.ProductCode.Label}" for="productInput"/>
+                                <apex:outputPanel id="pnlResMedProduct" >
+                                    <apex:actionRegion >
+                                        <apex:inputField value="{! Case.ProductCode__c}" id="productInput" onchange="updateProductFromProductCodeJS('{!$Component.productInput}')"/>
+                                        <apex:outputText value="  "/>
+                                        
+                                        <apex:outputLink id="productSearchlinkId" target="{!$Component.productInput}" title="Search Product"
+                                                         onclick="openProductLookup(); return false;"><apex:outputText value="{!$Label.Search}"/>
+                                        </apex:outputLink>
+                                        <apex:actionStatus id="productNameStatus">
+                                            <apex:facet name="start">
+                                                <apex:image url="{! URLFOR($Resource.progbar200x22)}" alt=" working..." height="16px" width="150px"/>
+                                            </apex:facet>
+                                        </apex:actionStatus>
+                                    </apex:actionRegion>
+                                </apex:outputPanel>
+                        </apex:pageBlockSectionItem>
+                        
+                           <!-- Product Type -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Product Type"/>
+                            <apex:outputField id="serializedFieldcMode" value="{! selectedProduct.Product_Type__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+                        <!-- Product Name -->
+                        <apex:pageBlockSectionItem >
+                            
+                            <apex:outputLabel value="Product Name"/>
+                            <apex:outputField id="productNameField" value="{!selectedProduct.Name}"/>
+                            
+                        </apex:pageBlockSectionItem>
+                        
+                        <!-- Breach Of Warranty -->
+                        <apex:pageBlockSectionItem >
+                            <apex:outputLabel value="Breach Of Warranty"/>
+                            <apex:inputField value="{!Case.GTS_Breach_of_Warranty__c}"/>
+                        </apex:pageBlockSectionItem>
+            
+                       
+                        <!-- Warranty Status -->
+                        <apex:pageBlockSectionItem >
+                             <apex:outputLabel value="Warranty Status"/>
+                             <apex:inputField id="warrantyStatusField" value="{! Case.GTS_Warranty_Status__c}" required="true"/>
+                        </apex:pageBlockSectionItem>
+                                                
+                            <!-- Below lot Number required when selected product not serialized : added as part of EUTSV -1762 story by Uga-->
+                        <apex:pageBlockSectionItem >
+                               <apex:outputLabel for="lotNumberField" value="{!$ObjectType.Case.fields.Lot_Number__c.Label}" />
+                                <apex:outputPanel id="lotNumberField">
+                                    <apex:outputPanel layout="block" styleClass="requiredInput">
+                                        <apex:outputPanel layout="block" styleClass="requiredBlock" rendered="{!selectedProduct.Product_Type__c == 'Lot'}"/>
+                                        <apex:inputField value="{! Case.Lot_Number__c}"/>
+                                    </apex:outputPanel>
+                                </apex:outputPanel>
+                        </apex:pageBlockSectionItem>
+                                    
+                    </apex:pageBlockSection>
+                                
+                </apex:pageBlock>
+                
+                <!-- Astral Patient Tier Section - Added as part of CPS -2514 by Annapurna -->
+                    
+                <apex:pageBlock title="Astral Specific Details" id="patientSection" rendered="{!(editMode || createMode)}">
+                    <apex:pageBlockSection columns="2">
+                    
+                        <!-- Patient Tier -->
+                        <apex:pageBlockSectionItem rendered="{!CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;')}">
+                            <apex:outputLabel value="{!$ObjectType.Case.fields.Patient_Tier_Type__c.Label}"/>                    
+                            <!-- Edit/Create Mode -->
+                            
+                            <apex:actionRegion >
+                                    <apex:inputField value="{!Case.Patient_Tier_Type__c}" required="true">
+                                        <apex:actionSupport event="onchange"
+                                            action="{!handlePatientTierChange}"
+                                            reRender="patientSection"/>
+                                    </apex:inputField>
+                                </apex:actionRegion>
+
+
+                        </apex:pageBlockSectionItem>
+                        <apex:pageBlockSectionItem rendered="{!ShowInspectionOnly}">
+                            <apex:outputLabel value="{!$ObjectType.Case.fields.Inspection_Only__c.Label}"/>                    
+                            <!-- Edit/Create Mode -->
+                            <apex:inputField value="{!Case.Inspection_Only__c}" required="true" />
+                              
+                        </apex:pageBlockSectionItem>
+                                            
+                    </apex:pageBlockSection>
+                    
+                    <!-- Show message for non-Astral products -->
+                        <apex:outputPanel rendered="{!NOT(CONTAINS(';' & selectedProduct.GTS_Product_Identifier__c & ';', ';Astral;'))}">
+                    
+                            <div style="padding:10px;">
+                                No fields to display
+                            </div>
+                    
+                        </apex:outputPanel>
+
+                 </apex:pageBlock>
+                    
+                    
+            </apex:tab>
+                <apex:tab id="tabProblem" label="{!$Label.Problem}" name="Problem">
+                    <apex:pageBlock title="{!$Label.ProblemDetails}" id="pbProblem">
+                        <apex:pageBlockSection rendered="{! not editMode && not createMode}">
+                            <!--Replace the Field API Name from Trackwise_Complaint_Category__c to Escalate_to_QA__c  EUTSV-3353-->
+                            <apex:outputField value="{! Case.Escalate_to_QA__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Problem_Summary__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Detailed_Description__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Problem_Code__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Adverse_Event_Occurred__c}"/>
+                            <apex:outputField value="{! Case.Date_of_Occurrence__c}"/>
+                            <apex:outputField value="{! Case.Priority}"/>
+                            <apex:outputField value="{! Case.Date_of_Awareness__c}"/>
+                            <apex:outputField value="{! Case.When_Did_the_Problem_Occur__c}"/>
+                            <apex:outputField value="{! Case.Customer_Reference_No__c}"/>
+                            <apex:outputField value="{! Case.QA_Review_Required__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Reason_For_Review__c}"/>
+                        </apex:pageBlockSection>
+                        <apex:pageBlockSection rendered="{! editMode || createMode}">
+                            <apex:inputField id="problemSummaryPicklist" styleClass="textClass" value="{! Case.Problem_Summary__c}" required="true"/>
+                            <apex:pageBlockSectionItem >
+                            </apex:pageBlockSectionItem>
+                            <apex:inputField id="detailedDescriptionField" styleClass="textClass" value="{! Case.Detailed_Description__c}"/>
+                            <apex:pageBlockSectionItem >
+                            </apex:pageBlockSectionItem>
+                            <apex:pageBlockSectionItem >
+                                <apex:outputLabel for="problemCodePicklist" value="{!$ObjectType.Case.fields.Problem_Code__c.Label}"/>
+                                <apex:outputPanel layout="block" styleClass="requiredInput">
+                                    <apex:outputPanel layout="block" styleClass="requiredBlock"/>
+                                    <apex:selectList id="problemCodePicklist" onchange="problemCodeSelectedJS('{!$Component.problemCodePicklist}');" value="{! Case.Problem_Code__c}" disabled="{!problemCodesAreEmpty}" size="1">
+                                        <apex:selectOptions value="{!problemCodesPicklistValues}"/>
+                                    </apex:selectList>
+                                </apex:outputPanel>
+                            </apex:pageBlockSectionItem>
+                            <apex:pageBlockSectionItem />
+                            <apex:inputField id="whenDidProbOccurField" value="{! Case.When_Did_the_Problem_Occur__c}" required="true"/>
+                            <apex:inputField id="dateOfOccurrenceField" value="{! Case.Date_of_Occurrence__c}" required="true"/>
+                            <apex:inputField id="priorityPicklist" value="{! Case.Priority}" required="true"/>
+                            <apex:inputField id="dateOfAwarenessField" value="{! Case.Date_of_Awareness__c}" required="true"/>
+                            <apex:pageBlockSectionItem >
+                                <apex:outputText styleClass="dataCol" value="{!$ObjectType.Case.fields.Adverse_Event_Occurred__c.Label}"/>
+                                <apex:outputPanel layout="block" styleClass="requiredInput">
+                                    <apex:outputPanel layout="block" styleClass="requiredBlock"/>
+                                    <apex:actionRegion >
+                                        <apex:selectList id="adverseEventOccurredPicklist" value="{! Case.Adverse_Event_Occurred__c}" required="true" disabled="{! not enableAdverseEventSelection}" size="1">
+                                            <apex:selectOptions value="{!adverseEventPicklistValues}"/>
+                                            <apex:actionSupport event="onchange" action="{!getQuestionsForAdverseEvent}" focus="customerRefNoField" reRender="pbQuestions, capeQA" status="resmedModelStatus" />
+                                        </apex:selectList>
+                                    </apex:actionRegion>
+                                </apex:outputPanel>
+                            </apex:pageBlockSectionItem>
+                            <apex:inputField id="customerRefNoField" value="{! Case.Customer_Reference_No__c}"/>
+                            <apex:pageBlockSectionItem >
+                                <apex:outputText styleClass="dataCol" value="{!$ObjectType.Case.fields.QA_Review_Required__c.Label}"/>
+                                <apex:actionRegion >
+                                    <apex:inputField id="qaReviewRequiredCheckbox" value="{! Case.QA_Review_Required__c}">
+                                        <apex:actionSupport event="onchange" focus="reasonForReviewField" reRender="reasonForReviewField" status="qareviewStatus"/>
+                                    </apex:inputField>
+                                    <apex:actionStatus id="qareviewStatus" startText=" Wait..." stopText=""/>
+                                </apex:actionRegion>
+                            </apex:pageBlockSectionItem>
+                            <apex:pageBlockSectionItem >
+                            </apex:pageBlockSectionItem>
+                            <apex:inputField id="reasonForReviewField" styleClass="textClass" value="{! Case.Reason_For_Review__c}" required="{! Case.QA_Review_Required__c}"/>
+                            <apex:pageBlockSectionItem >
+                            </apex:pageBlockSectionItem>
+                        </apex:pageBlockSection>
+                    </apex:pageBlock>
+                </apex:tab>
+                <apex:tab id="tabServiceRequest" label="Case" name="ServiceRequest">
+                    <apex:pageBlock title="{!$Label.CaseDetails}" id="pbServiceRequest">
+                        <apex:pageBlockSection rendered="{! not editMode && not createMode}">
+                            <apex:outputField value="{! Case.Status}"/>
+                            <!--Added by Srija -Service Centre -->
+                            <apex:outputField value="{! Case.Service_Centre__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Items_Received__c}"/>
+                            <apex:outputField value="{! Case.Received_Date__c}"/>
+                            <apex:outputField value="{! Case.Cause_Code__c}"/>
+                            <apex:outputField value="{! Case.Quote_Sent_Date__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Quote_Approved_Date__c}"/>
+                            <apex:outputField value="{! Case.Resolution_Code__c}"/>
+                            <apex:outputField value="{! Case.Date_Repaired__c}"/>
+                            <apex:outputField value="{! Case.Technical_Report__c}"/>
+                            <apex:outputField value="{! Case.Repaired_By__c}"/>
+                            <apex:outputField value="{! Case.Calibration_Results__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Test_Results__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:outputField value="{! Case.Labour_Hours__c}"/>
+                            <apex:outputField value="{! Case.Build_Standard__c}"/>
+                            <apex:outputField value="{! Case.GTS_Supercapacitor_test_TPF_time__c}"/>
+                            <!--Added by Swathi EUTSV-2569-->
+                            <apex:outputField value="{! Case.GTS_Software_version_at_Receipt__c}"/>
+                            <!-- Added by Srija for the Astral Problem Code and TPF time EUTSV-2321-->
+                            <apex:outputField value="{! Case.Patient_Hours__c}"/>
+                            <!-- Added by Swathi EUTSV-2569-->
+                            <apex:outputField value="{! Case.GTS_Software_version_at_Delivery__c}"/>
+                            <apex:outputField value="{! Case.Charges__c}"/>
+                            <apex:outputField value="{! Case.Machine_Hours__c}"/>
+                            <apex:outputField value="{! Case.CurrencyIsoCode}"/>
+                            <!--<apex:outputText >&nbsp;</apex:outputText>-->
+                            <apex:outputField value="{! Case.Ventilation_Hours__c}"/>
+                            <apex:outputField value="{! Case.Shipping_Reference_No__c}"/>
+                            <apex:outputField value="{! Case.Date_Shipped__c}"/>
+                            <apex:outputField value="{! Case.Oracle_Order_Number__c}"/>
+                            <apex:outputText >&nbsp;</apex:outputText>
+                        </apex:pageBlockSection>
+                        <apex:pageBlockSection rendered="{! editMode || createMode}">
+                            <apex:inputField id="srStatusField" value="{! Case.Status}" required="true"/>
+                            
+                            <!-- Added by Srija -Service Centre and added Rendered conditions for Internal and community users-->
+                            <apex:inputField id="serviceCenterByField" value="{!Case.Service_Centre__c}" required="true" rendered="{! serviceCenter}"/>
+                            <apex:pageBlockSectionItem />
+                            <apex:pageBlockSectionItem />
+                            <!-- added by swathi for alignment of External Users-->
+                            <apex:pageBlockSection rendered="{!not serviceCenter}">
+                                
+                            </apex:pageBlockSection>
+                            <!--                            <apex:inputField onchange="setStatus" id="srStatusField" value="{! Case.Status}" required="true"/>
+-->                            <!-- <apex:pageBlockSectionItem > -->
+                            <!-- <apex:outputText styleClass="dataCol" value="Status"/> -->
+                            <!-- <apex:actionRegion > -->
+                            <!-- <apex:inputField id="srStatusField" value="{! Case.Status}" required="true"/> -->
+                            <!-- </apex:pageBlockSectionItem> -->
+                            <apex:inputField id="itemReceivedField" value="{! Case.Items_Received__c}" styleClass="textClass"/>
+                            <apex:inputField id="receivedDateField" value="{! Case.Received_Date__c}"/>
+                            <apex:inputField id="causeCodePicklist" value="{! Case.Cause_Code__c}"/>
+                            <apex:inputField id="quoteSentDateField" value="{! Case.Quote_Sent_Date__c}"/>
+                            
+                            <apex:pageBlockSectionItem />
+                            <apex:inputField id="quoteApprovedDateField" value="{! Case.Quote_Approved_Date__c}"/>
+                            <apex:inputField id="resolutionCodePicklist" value="{! Case.Resolution_Code__c}"/>
+                            <apex:inputField id="dateRepairedField" value="{! Case.Date_Repaired__c}"/>
+                            <apex:inputField id="technicalReportField" value="{! Case.Technical_Report__c}" styleClass="textClass"/>
+                            <apex:inputField id="repairedByField" value="{! Case.Repaired_By__c}"/>
+                            <apex:inputField id="calibrationResults" value="{! Case.Calibration_Results__c}" styleClass="textClass"/>
+                            <apex:pageBlockSectionItem />
+                            <apex:inputField id="testResults" value="{! Case.Test_Results__c}" styleClass="textClass"/>
+                            <apex:pageBlockSectionItem />
+                            <apex:pageBlockSectionItem />
+                            <apex:pageBlockSectionItem />
+                            <apex:inputField id="labourHoursField" value="{! Case.Labour_Hours__c}"/>
+                            <apex:inputField id="buildStandardField" value="{! Case.Build_Standard__c}"/>
+                            <apex:inputField id="tpfTime" value="{! Case.GTS_Supercapacitor_test_TPF_time__c}"/>
+                            <!--Added by Swathi for RSM Users-->
+                            <apex:inputField id="svReceipt" value="{! Case.GTS_Software_version_at_Receipt__c}"/>
+                            
+                            <!-- Added by Srija for the Astral Problem Code and TPF time EUTSV-2321-->
+                            <apex:inputField id="patientHoursField" value="{! Case.Patient_Hours__c}"/>
+                            <apex:inputField id="svDelivery" value="{! Case.GTS_Software_version_at_Delivery__c}"/>
+                            <apex:pageBlockSectionItem >
+                                <apex:outputText styleClass="dataCol" value="{!$ObjectType.Case.Fields.Charges__c.Label}"/>
+                                <apex:actionRegion >
+                                    <apex:inputField id="chargesField" value="{! Case.Charges__c}">
+                                        <apex:actionSupport event="onchange" focus="currencyField" reRender="currencyField" status="chargesStatus"/>
+                                    </apex:inputField>
+                                    <apex:actionStatus id="chargesStatus" startText=" Wait..." stopText=""/>
+                                </apex:actionRegion>
+                            </apex:pageBlockSectionItem>
+                            <apex:inputField id="machineHoursField" value="{! Case.Machine_Hours__c}"/>
+                            <apex:inputField id="currencyField" value="{! Case.CurrencyIsoCode}" required="{! Case.Charges__c!=null && Case.Charges__c>0}"/>
+                            <apex:pageBlockSectionItem />
+                            <apex:outputText >&nbsp;</apex:outputText>
+                            <apex:inputField id="ventilationHoursField" value="{! Case.Ventilation_Hours__c}"/>
+                            <apex:inputField id="shippingRefNoField" value="{! Case.Shipping_Reference_No__c}"/>
+                            <apex:inputField id="dateShippedField" value="{! Case.Date_Shipped__c}"/>
+                            <apex:inputField id="oracleOrderNumberField" value="{! Case.Oracle_Order_Number__c}"/>
+                            
+                            <apex:pageBlockSectionItem />
+                            
+                        </apex:pageBlockSection>
+                    </apex:pageBlock>
+                </apex:tab>
+                <apex:tab id="tabSpareParts" label="Spare Parts" name="Spare Parts">
+                    <apex:pageBlock title="{!$Label.SparePartsUsed}" id="pbSpareParts">
+                        <apex:pageBlockButtons location="top">
+                            <!-- Below "NEW" button for SpareParts visible only in Classic version : added on 04-01-2022 by Adi-->
+                            <apex:commandButton value="{!$Label.New}" rendered="{! (createMode || editMode) && NOT(IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False))}" onclick="openLookupCustom('{!$Component.sparePartProductSearchlinkId}'); return false;"/>                          
+                            <!-- Below "NEW" button for SpareParts visible only in Lightning Experience : added on 04-01-2022 by Adi -->  
+                            <apex:commandButton id="SparePartSearchId" rendered="{!(createMode || editMode) && IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False)}" value="{!$Label.New}" title="Search SparePart"
+                                                onclick="openSparePartLookup(); return false;"/>
+                        </apex:pageBlockButtons>
+                        <apex:outputLink id="sparePartProductSearchlinkId" value="{!URLFOR($Page.CaseProductLookup)}" target="{!$Component.tabSpareParts}" title="Search Product"
+                                         onclick="openLookupCustom('{!$Component.sparePartProductSearchlinkId}')">
+                            <apex:param name="lookupType" value="{! sparePartLookupType}"/>
+                        </apex:outputLink>
+                        <apex:pageBlockTable rendered="{! spareParts != null && spareParts.size > 0}" id="sparePartsTable" value="{! spareParts}" var="sparePart" columnsWidth="100px">
+                            <apex:column headerValue="Action" rendered="{! createMode || editMode}">
+                                <div align="center">
+                                    <!-- Below "DELETE" link for SpareParts visible only in Classic version : added on 04-01-2022 by Adi -->
+                                    <apex:outputLink value="{!$Label.Del}" rendered="{!NOT(IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False))}" onclick="removeSparePart('{! sparePart.Product__r.Id}'); return false;">{!$Label.Del}
+                                    </apex:outputLink>
+                                    <!-- Below "DELETE" link for SpareParts visible only in Lightning Experience : added on 04-01-2022 by Adi --> 
+                                    <apex:commandLink value="{!$Label.Del}" rendered="{!IF(contains($CurrentPage.URL, 'lightning.force.com'), True, False)}" onclick="removeSparePart('{! sparePart.Product__r.Id}'); return false;" reRender="dummy"/>
+                                </div>
+                            </apex:column>
+                            <apex:column value="{! sparePart.Product__r.ProductCode}" />
+                            <apex:column value="{! sparePart.Product__c}" />
+                            <apex:column value="{! sparePart.Product__r.Product_Type__c}" />
+                            <apex:column value="{! sparePart.Product__r.Life_Threatening__c}" />
+                            <!-- Below lot Number and serial number required based on serialized : added as part of EUTSV -1762 story by Uga-->
+                            <!--Changes by Anusha to accomodate Old Raw SN# and New Raw SN# changes -EUTSV-3875- Start-->
+                            <apex:column headerValue="Serial Number Details" headerClass="centerCol">
+                                
+                                <apex:pageBlockTable id="serialsparePartsTable" value="{!serialNum}" var="serialNumber" columnsWidth="125px"  styleClass="whiteHeader">
+                                    
+                                    <apex:column headerValue="{!$ObjectType.Spare_Part__c.Fields.Control_Number__c.Label}" style="width:33.33%;">
+                                        <apex:outputPanel layout="block" styleClass="requiredInput">
+                                            <apex:outputPanel layout="block" styleClass="requiredBlock" rendered="{! sparePart.Product__r.Product_Type__c =='Serial'}"/>   
+                                            <apex:inputField rendered="{! createMode || editMode}" value="{! sparePart.Control_Number__c}" style="width:90%;"/>
+                                        </apex:outputPanel>
+                                        <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.Control_Number__c}" style="width:33.3px;"/>
+                                    </apex:column>
+                                    
+                                    <apex:column headerValue="{!$ObjectType.Spare_Part__c.Fields.Old_Raw_Serial_Number__c.Label}" style="width:33.33%;">
+                                        <apex:outputPanel layout="block" styleClass="requiredInput">
+                                            <apex:outputPanel layout="block" rendered="{! sparePart.Product__r.Product_Type__c =='Serial'}"/>   
+                                            <apex:inputField rendered="{! createMode || editMode}" value="{! sparePart.Old_Raw_Serial_Number__c}" style="width:90%;"/>
+                                        </apex:outputPanel>
+                                        <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.Old_Raw_Serial_Number__c}" style="width:100%;"/>
+                                    </apex:column>
+                                    
+                                    <apex:column headerValue="{!$ObjectType.Spare_Part__c.Fields.New_Raw_Serial_Number__c.Label}" style="width:33.33%;">
+                                        <apex:outputPanel layout="block" styleClass="requiredInput">
+                                            <apex:outputPanel layout="block" rendered="{! sparePart.Product__r.Product_Type__c =='Serial'}"/>   
+                                            <apex:inputField rendered="{! createMode || editMode}" value="{! sparePart.New_Raw_Serial_Number__c}" style="width:90%;"/>
+                                        </apex:outputPanel>
+                                        <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.New_Raw_Serial_Number__c}" style="width:100%;"/>
+                                    </apex:column>
+                                    
+                                </apex:pageBlockTable>
+                                
+                            </apex:column>
+                            <!--Changes by Anusha to accomodate Old Raw SN# and New Raw SN# changes -EUTSV-3875  End-->
+                            <apex:column headerValue="{!$ObjectType.Spare_Part__c.Fields.Lot_Number__c.Label}">
+                                <apex:outputPanel layout="block" styleClass="requiredInput">
+                                    <apex:outputPanel layout="block" styleClass="requiredBlock" rendered="{!sparePart.Product__r.Product_Type__c =='Lot'}"/>
+                                    
+                                    <apex:inputField rendered="{!  createMode ||  editMode}" value="{! sparePart.Lot_Number__c}"/>
+                                </apex:outputPanel>
+                                <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.Lot_Number__c}"/>
+                            </apex:column>
+                            <apex:column headerValue="{!$ObjectType.Spare_Part__c.Fields.GTS_Warranty_Status__c.Label}" > 
+                                <apex:outputPanel layout="block" styleClass="requiredBlock">
+                                    <apex:inputField rendered="{! createMode ||  editMode}" value="{! sparePart.GTS_Warranty_Status__c}" required="true"/>
+                                </apex:outputPanel>
+                                <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.GTS_Warranty_Status__c}"/>
+                            </apex:column>
+                            
+                            <apex:column headerValue="{!$ObjectType.Sotware_Version__c.Label}">
+                                <apex:selectList value="{! sparePart.Software_Version__c}" size="1"
+                                                 required="true" rendered="{! (createMode || editMode) && renderSoftwareVersionForProduct[sparePart.Product__c]}">
+                                    <apex:selectOptions value="{! productIdToSoftwareVersionOptions[sparePart.Product__c]}" />
+                                </apex:selectList>
+                                <apex:outputField rendered="{! NOT createMode && NOT editMode}" value="{! sparePart.Software_Version__c}"/>
+                            </apex:column>
+                        </apex:pageBlockTable>
+                    </apex:pageBlock>
+                </apex:tab>
+                <apex:tab id="tabQuestions" label="Questions" name="Questions" ontabenter="questionsLookedAt();">
+                    <apex:pageBlock title="Questions" id="pbQuestions">
+                        <apex:outputPanel id="noQuestionsPanel" rendered="{! not questionsToAsk}">
+                            <p><apex:outputText value="{!$Label.NoQuestionsForCase}"/></p>
+                        </apex:outputPanel>
+                        <apex:outputPanel id="questionsPanel" rendered="{! questionsToAsk}">
+                            <apex:repeat value="{!questions}" var="q" id="capeQA">
+                                <p>
+                                    <apex:outputText value="{!q.Number__c}. {!q.Text__c}"/>
+                                    <input type="hidden" class="questionId" value="{!q.Id}"/>
+                                </p>
+                                <p>
+                                    <input type="hidden" class="responseId" value="{!responses[q.Number__c-1].Id}"/>
+                                    <apex:inputField rendered="{! (createMode || editMode) && ( (q.Number__c-1) < responses.size)}" styleClass="textClass responseInput" value="{!responses[q.Number__c-1].Response__c}"/>
+                                    <apex:outputText rendered="{! (NOT createMode && NOT editMode) && ( (q.Number__c-1) < responses.size)}" value="{!responses[q.Number__c-1].Response__c}"/>
+                                </p>
+                            </apex:repeat>
+                        </apex:outputPanel>
+                    </apex:pageBlock>
+                </apex:tab>
+            </apex:tabPanel>
+        </apex:pageBlock>
+    </apex:form>
+    <apex:pageBlock rendered="{! not createMode}">
+        <apex:relatedList subject="{! Case}" list="CombinedAttachments"/>
+    </apex:pageBlock>
+</apex:page>
